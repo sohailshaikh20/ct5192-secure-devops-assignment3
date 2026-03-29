@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  backend-flask:
+    build:
+      context: ./backend-flask
+      args:
+        NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY}
+    ports:
+      - "4000:4000"
+    environment:
+      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
+      - NEW_RELIC_APP_NAME=SecureDevOps-Backend
+      - NEW_RELIC_ENVIRONMENT=production
+      - NEW_RELIC_LOG=stderr
+      - NEW_RELIC_LOG_LEVEL=info
+      - NEW_RELIC_APPLICATION_LOGGING_ENABLED=true
+      - NEW_RELIC_APPLICATION_LOGGING_FORWARDING_ENABLED=true
+      - NEW_RELIC_APPLICATION_LOGGING_METRICS_ENABLED=true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app-network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-flask
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - app-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - app-network
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.17.0
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - elasticsearch
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  elasticsearch-data:

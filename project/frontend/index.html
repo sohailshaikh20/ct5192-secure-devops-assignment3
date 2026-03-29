@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>Secure DevOps</title></head>
+<body>
+  <h1>CT5192 - Secure DevOps App</h1>
+  <button onclick="fetchData()">Fetch Data</button>
+  <pre id="output"></pre>
+  <script>
+    console.log('Frontend loaded at ' + new Date().toISOString());
+    async function fetchData() {
+      console.log('Fetching from backend...');
+      const res = await fetch('/api/data');
+      const data = await res.json();
+      console.log('Received:', JSON.stringify(data));
+      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>

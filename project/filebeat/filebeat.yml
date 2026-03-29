@@ -1,0 +1,32 @@
+filebeat.inputs:
+  - type: container
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+    json.keys_under_root: true
+    json.message_key: log
+    json.add_error_key: true
+    processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+
+processors:
+  - add_host_metadata:
+      when:
+        not:
+          contains:
+            tags: "forwarded"
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  indices:
+    - index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+      when.or:
+        - equals:
+            container.name: "backend-flask"
+        - equals:
+            container.name: "frontend"
+
+setup.kibana:
+  host: "kibana:5601"
